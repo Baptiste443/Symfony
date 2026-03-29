@@ -3,7 +3,7 @@
 {% block title %}Mon profil{% endblock %}
 
 {% block body %}
-<div class="container mt-4" style="max-width: 700px;">
+<div class="container mt-4" style="max-width: 800px;">
     <h1 class="mb-4">Mon profil</h1>
 
     {# Informations de compte (non modifiables ici) #}
@@ -70,5 +70,100 @@
             {{ form_end(passwordForm) }}
         </div>
     </div>
+
+    {# ===== RÉSERVATIONS À VENIR ===== #}
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <strong>Réservations à venir</strong>
+            <span class="badge bg-primary">{{ reservationsAvenir|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            {% if reservationsAvenir is empty %}
+                <p class="text-muted p-3 mb-0">Aucune réservation à venir.</p>
+            {% else %}
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Véhicule</th>
+                            <th>Du</th>
+                            <th>Au</th>
+                            <th>Durée</th>
+                            <th>Total</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in reservationsAvenir %}
+                        <tr>
+                            <td>{{ r.vehicle.name }}</td>
+                            <td>{{ r.startDate|date('d/m/Y') }}</td>
+                            <td>{{ r.endDate|date('d/m/Y') }}</td>
+                            <td>{{ r.nbJours }} j.</td>
+                            <td>{{ r.totalPrice|number_format(0, ',', ' ') }} gal.</td>
+                            <td>
+                                <a href="{{ path('reservation_bon', {id: r.id}) }}" class="btn btn-sm btn-outline-secondary" title="Voir le bon">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </a>
+                                <a href="{{ path('app_profile_reservation_edit', {id: r.id}) }}" class="btn btn-sm btn-warning" title="Modifier">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="post" action="{{ path('app_profile_reservation_cancel', {id: r.id}) }}"
+                                      style="display:inline"
+                                      onsubmit="return confirm('Annuler cette réservation ?')">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Annuler">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ===== RÉSERVATIONS PASSÉES ===== #}
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <strong>Réservations passées</strong>
+            <span class="badge bg-light text-dark">{{ reservationsPassees|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            {% if reservationsPassees is empty %}
+                <p class="text-muted p-3 mb-0">Aucune réservation passée.</p>
+            {% else %}
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Véhicule</th>
+                            <th>Du</th>
+                            <th>Au</th>
+                            <th>Durée</th>
+                            <th>Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in reservationsPassees %}
+                        <tr class="text-muted">
+                            <td>{{ r.vehicle.name }}</td>
+                            <td>{{ r.startDate|date('d/m/Y') }}</td>
+                            <td>{{ r.endDate|date('d/m/Y') }}</td>
+                            <td>{{ r.nbJours }} j.</td>
+                            <td>{{ r.totalPrice|number_format(0, ',', ' ') }} gal.</td>
+                            <td>
+                                <a href="{{ path('reservation_bon', {id: r.id}) }}" class="btn btn-sm btn-outline-secondary" title="Voir le bon">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+
 </div>
 {% endblock %}

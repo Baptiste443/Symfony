@@ -2,9 +2,12 @@
 
 namespace App\Controller;
 
+use App\Entity\Reservation;
 use App\Entity\User;
+use App\Entity\Vehicle;
 use App\Form\ChangePasswordType;
 use App\Form\ProfileType;
+use App\Repository\ReservationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -30,7 +33,7 @@ class ProfileController extends AbstractController
     }
 
     #[Route('/profile', name: 'app_profile', methods: ['GET', 'POST'])]
-    public function profile(Request $request, EntityManagerInterface $em): Response
+    public function profile(Request $request, EntityManagerInterface $em, ReservationRepository $reservationRepo): Response
     {
         /** @var User $user */
         $user = $this->getUser();
@@ -48,9 +51,15 @@ class ProfileController extends AbstractController
         // Formulaire de changement de mot de passe (non mappé, traité séparément)
         $passwordForm = $this->createForm(ChangePasswordType::class);
 
+        // Récupérer les réservations passées et à venir de l'utilisateur
+        $reservationsPassees = $reservationRepo->findPastByUser($user);
+        $reservationsAvenir = $reservationRepo->findUpcomingByUser($user);
+
         return $this->render('profile/index.html.twig', [
             'profileForm' => $profileForm,
             'passwordForm' => $passwordForm,
+            'reservationsPassees' => $reservationsPassees,
+            'reservationsAvenir' => $reservationsAvenir,
         ]);
     }
 
@@ -97,6 +106,8 @@ class ProfileController extends AbstractController
         return $this->render('profile/index.html.twig', [
             'profileForm' => $profileForm,
             'passwordForm' => $passwordForm,
+            'reservationsPassees' => [],
+            'reservationsAvenir' => [],
         ]);
     }
 
@@ -128,5 +139,114 @@ class ProfileController extends AbstractController
         }
 
         return $this->render('profile/confirm_password.html.twig');
+    }
+
+    #[Route('/profile/reservation/{id}/edit', name: 'app_profile_reservation_edit', methods: ['GET', 'POST'])]
+    public function editReservation(Reservation $reservation, Request $request, EntityManagerInterface $em): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        // Seul le propriétaire de la réservation peut la modifier
+        if ($reservation->getUser() !== $user) {
+            throw $this->createAccessDeniedException('Accès interdit.');
+        }
+
+        // On ne peut modifier qu'une réservation à venir
+        if ($reservation->getEndDate() < new \DateTimeImmutable('today')) {
+            $this->addFlash('danger', 'Impossible de modifier une réservation passée.');
+            return $this->redirectToRoute('app_profile');
+        }
+
+        // Liste de tous les véhicules pour le choix du véhicule
+        $vehicles = $em->getRepository(Vehicle::class)->findAll();
+
+        if ($request->isMethod('POST')) {
+            $dateStartStr = $request->request->get('dateStart');
+            $dateEndStr = $request->request->get('dateEnd');
+            $vehicleId = $request->request->get('vehicleId');
+
+            $dateStart = $dateStartStr ? new \DateTimeImmutable($dateStartStr) : null;
+            $dateEnd = $dateEndStr ? new \DateTimeImmutable($dateEndStr) : null;
+            $vehicle = $em->getRepository(Vehicle::class)->find($vehicleId);
+
+            // Validations
+            if (!$dateStart || !$dateEnd || !$vehicle) {
+                $this->addFlash('danger', 'Veuillez remplir tous les champs.');
+                return $this->render('profile/edit_reservation.html.twig', [
+                    'reservation' => $reservation,
+                    'vehicles' => $vehicles,
+                ]);
+            }
+
+            if ($dateEnd <= $dateStart) {
+                $this->addFlash('danger', 'La date de fin doit être postérieure à la date de début.');
+                return $this->render('profile/edit_reservation.html.twig', [
+                    'reservation' => $reservation,
+                    'vehicles' => $vehicles,
+                ]);
+            }
+
+            // Vérifier la disponibilité du véhicule (en excluant la réservation en cours)
+            $conflit = $em->getRepository(Reservation::class)->createQueryBuilder('r')
+                ->where('r.vehicle = :vehicle')
+                ->andWhere('r.id != :currentId')
+                ->andWhere('r.startDate < :dateEnd')
+                ->andWhere('r.endDate > :dateStart')
+                ->setParameter('vehicle', $vehicle)
+                ->setParameter('currentId', $reservation->getId())
+                ->setParameter('dateStart', $dateStart)
+                ->setParameter('dateEnd', $dateEnd)
+                ->getQuery()
+                ->getOneOrNullResult();
+
+            if ($conflit) {
+                $this->addFlash('danger', 'Ce véhicule n\'est pas disponible sur cette période.');
+                return $this->render('profile/edit_reservation.html.twig', [
+                    'reservation' => $reservation,
+                    'vehicles' => $vehicles,
+                ]);
+            }
+
+            // Mettre à jour la réservation
+            $nbJours = $dateStart->diff($dateEnd)->days;
+            $reservation->setVehicle($vehicle);
+            $reservation->setStartDate($dateStart);
+            $reservation->setEndDate($dateEnd);
+            $reservation->setTotalPrice((string) ((float) $vehicle->getPrice() * $nbJours));
+            $em->flush();
+
+            $this->addFlash('success', 'Réservation modifiée avec succès.');
+            return $this->redirectToRoute('app_profile');
+        }
+
+        return $this->render('profile/edit_reservation.html.twig', [
+            'reservation' => $reservation,
+            'vehicles' => $vehicles,
+        ]);
+    }
+
+    #[Route('/profile/reservation/{id}/cancel', name: 'app_profile_reservation_cancel', methods: ['POST'])]
+    public function cancelReservation(Reservation $reservation, EntityManagerInterface $em): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        // Seul le propriétaire peut annuler
+        if ($reservation->getUser() !== $user) {
+            throw $this->createAccessDeniedException('Accès interdit.');
+        }
+
+        // On ne peut annuler qu'une réservation à venir
+        if ($reservation->getEndDate() < new \DateTimeImmutable('today')) {
+            $this->addFlash('danger', 'Impossible d\'annuler une réservation passée.');
+            return $this->redirectToRoute('app_profile');
+        }
+
+        $em->remove($reservation);
+        $em->flush();
+
+        $this->addFlash('success', 'Réservation annulée avec succès.');
+        return $this->redirectToRoute('app_profile');
     }
 }
