@@ -1,0 +1,74 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mon profil{% endblock %}
+
+{% block body %}
+<div class="container mt-4" style="max-width: 700px;">
+    <h1 class="mb-4">Mon profil</h1>
+
+    {# Informations de compte (non modifiables ici) #}
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <strong>Compte</strong>
+        </div>
+        <div class="card-body">
+            <p class="mb-0"><strong>Email :</strong> {{ app.user.email }}</p>
+            <p class="mb-0 mt-1">
+                <strong>Compte vérifié :</strong>
+                {% if app.user.verified %}
+                    <span class="badge bg-success">Oui</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark">Non</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    {# Formulaire données personnelles #}
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <strong>Données personnelles</strong>
+        </div>
+        <div class="card-body">
+            {{ form_start(profileForm, { action: path('app_profile'), method: 'POST' }) }}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        {{ form_row(profileForm.firstName, { attr: { class: 'form-control' } }) }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form_row(profileForm.lastName, { attr: { class: 'form-control' } }) }}
+                    </div>
+                    <div class="col-12">
+                        {{ form_row(profileForm.address, { attr: { class: 'form-control' } }) }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form_row(profileForm.phone, { attr: { class: 'form-control' } }) }}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Enregistrer</button>
+            {{ form_end(profileForm) }}
+        </div>
+    </div>
+
+    {# Formulaire changement de mot de passe #}
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <strong>Changer le mot de passe</strong>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Un code de confirmation sera envoyé par email.</p>
+            {{ form_start(passwordForm, { action: path('app_profile_change_password'), method: 'POST' }) }}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        {{ form_row(passwordForm.newPassword.first, { attr: { class: 'form-control' } }) }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form_row(passwordForm.newPassword.second, { attr: { class: 'form-control' } }) }}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-warning mt-3">Changer le mot de passe</button>
+            {{ form_end(passwordForm) }}
+        </div>
+    </div>
+</div>
+{% endblock %}
