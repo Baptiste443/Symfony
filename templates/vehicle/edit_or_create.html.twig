@@ -3,81 +3,107 @@
 {% block title %}{{ vehicle.id ? 'Modifier' : 'Ajouter' }} un véhicule{% endblock %}
 
 {% block body %}
-    <div class="container mt-4">
-        <h1 class="text-primary">{{ vehicle and vehicle.id ? 'Modifier' : 'Ajouter' }} un véhicule</h1>
+<div class="container mt-4" style="max-width: 900px;">
+    <h1 class="text-primary mb-4">{{ vehicle and vehicle.id ? 'Modifier' : 'Ajouter' }} un véhicule</h1>
 
-        {{ form_start(form) }}
+    {{ form_start(form) }}
 
-        {# Affichage des erreurs globales du formulaire #}
-        {% if form.vars.errors|length > 0 %}
-            <div class="alert alert-danger">
-                <ul class="mb-0">
-                    {% for error in form.vars.errors %}
-                        <li>{{ error.message }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        {% endif %}
+    {# Erreurs globales #}
+    {% if form.vars.errors|length > 0 %}
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                {% for error in form.vars.errors %}
+                    <li>{{ error.message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
 
-        <div class="row">
-            <div class="col-md-6">
-                <div class="mb-3">
-                    {{ form_label(form.name) }}
-                    {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
-                    <div class="text-danger">{{ form_errors(form.name) }}</div>
-                </div>
+    <div class="row g-4">
 
-                <div class="mb-3">
-                    {{ form_label(form.capacity) }}
-                    {{ form_widget(form.capacity, {'attr': {'class': 'form-control'}}) }}
-                    <div class="text-danger">{{ form_errors(form.capacity) }}</div>
-                </div>
-
-                <div class="mb-3">
-                    {{ form_label(form.price) }}
-                    {{ form_widget(form.price, {'attr': {'class': 'form-control'}}) }}
-                    <div class="text-danger">{{ form_errors(form.price) }}</div>
-                </div>
-
-                <div class="mb-3">
-                    {{ form_label(form.typeVehicle) }}
-                    {{ form_widget(form.typeVehicle, {'attr': {'class': 'form-select'}}) }}
-                    <div class="text-danger">{{ form_errors(form.typeVehicle) }}</div>
-                </div>
-
-                <div class="mb-3">
-                    {{ form_label(form.features) }}
-                    {{ form_widget(form.features, {'attr': {'class': 'form-select', 'multiple': 'multiple'}}) }}
-                    <div class="text-danger">{{ form_errors(form.features) }}</div>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Image actuelle :</label>
-                <div class="d-flex align-items-center">
-                    {% if vehicle.id and vehicle.imagePath %}
-                        <img src="{{ asset(vehicle.imagePath) }}" class="img-thumbnail me-3" alt="{{ vehicle.name }}" width="150">
-                    {% else %}
-                        <img src="{{ asset('uploads/default.png') }}" class="img-thumbnail me-3" alt="Aucune image" width="150">
-                    {% endif %}
-                    <div>
-                        {{ form_label(form.imageFile) }}
-                        {{ form_widget(form.imageFile, {'attr': {'class': 'form-control'}}) }}
-                        <div class="text-danger">{{ form_errors(form.imageFile) }}</div>
+        {# Colonne gauche : champs texte #}
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-dark text-white"><strong>Informations générales</strong></div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        {{ form_label(form.name, null, { label_attr: { class: 'form-label fw-semibold' } }) }}
+                        {{ form_widget(form.name, { attr: { class: 'form-control' } }) }}
+                        <div class="text-danger small">{{ form_errors(form.name) }}</div>
+                    </div>
+                    <div class="mb-3">
+                        {{ form_label(form.capacity, null, { label_attr: { class: 'form-label fw-semibold' } }) }}
+                        {{ form_widget(form.capacity, { attr: { class: 'form-control' } }) }}
+                        <div class="text-danger small">{{ form_errors(form.capacity) }}</div>
+                    </div>
+                    <div class="mb-3">
+                        {{ form_label(form.price, null, { label_attr: { class: 'form-label fw-semibold' } }) }}
+                        {{ form_widget(form.price, { attr: { class: 'form-control' } }) }}
+                        <div class="text-danger small">{{ form_errors(form.price) }}</div>
+                    </div>
+                    <div class="mb-3">
+                        {{ form_label(form.typeVehicle, null, { label_attr: { class: 'form-label fw-semibold' } }) }}
+                        {{ form_widget(form.typeVehicle, { attr: { class: 'form-select' } }) }}
+                        <div class="text-danger small">{{ form_errors(form.typeVehicle) }}</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="d-flex justify-content-between mt-4">
-            <button type="submit" class="btn btn-success">
-                <i class="bi bi-save"></i> {{ vehicle.id ? 'Mettre à jour' : 'Ajouter' }}
-            </button>
-            <a href="{{ path('app_vehicle') }}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Retour à la liste
-            </a>
+        {# Colonne droite : image #}
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-dark text-white"><strong>Image du véhicule</strong></div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center gap-3">
+                    {% if vehicle.id and vehicle.imagePath %}
+                        <img src="{{ asset(vehicle.imagePath) }}" class="img-fluid rounded shadow" alt="{{ vehicle.name }}" style="max-height: 200px; object-fit: cover;">
+                    {% else %}
+                        <div class="text-muted text-center border rounded p-4 w-100">
+                            <i class="bi bi-image fs-1"></i><br>Aucune image
+                        </div>
+                    {% endif %}
+                    <div class="w-100">
+                        {{ form_label(form.imageFile, null, { label_attr: { class: 'form-label fw-semibold' } }) }}
+                        {{ form_widget(form.imageFile, { attr: { class: 'form-control' } }) }}
+                        <div class="text-danger small">{{ form_errors(form.imageFile) }}</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        {{ form_end(form) }}
+        {# Ligne entière : features en grille #}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <strong>{{ form_label(form.features) }}</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2">
+                        {% for feature in form.features %}
+                            <div class="col">
+                                <div class="form-check border rounded p-2 h-100">
+                                    {{ form_widget(feature, { attr: { class: 'form-check-input' } }) }}
+                                    {{ form_label(feature, null, { label_attr: { class: 'form-check-label' } }) }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-danger small mt-1">{{ form_errors(form.features) }}</div>
+                </div>
+            </div>
+        </div>
+
     </div>
+
+    <div class="d-flex justify-content-between mt-4">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-save"></i> {{ vehicle.id ? 'Mettre à jour' : 'Ajouter' }}
+        </button>
+        <a href="{{ path('app_vehicle') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Retour à la liste
+        </a>
+    </div>
+
+    {{ form_end(form) }}
+</div>
 {% endblock %}
