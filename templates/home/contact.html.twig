@@ -1,0 +1,37 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Contactez nous{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <h1 class="text-primary"><i class="bi bi-envelope"></i> Contactez nous</h1>
+        <p class="text-muted">Envoyez-nous un message par parchemin.</p>
+
+        {{ form_start(form) }}
+        <div class="mb-3">
+            {{ form_label(form.name, 'Nom du Sorcier') }}
+            {{ form_widget(form.name, {'attr': {'class': 'form-control', 'placeholder': 'Votre nom'}}) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.email, 'Adresse de Chouette Postale') }}
+            {{ form_widget(form.email, {'attr': {'class': 'form-control', 'placeholder': 'Votre adresse'}}) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.message, 'Message') }}
+            {{ form_widget(form.message, {'attr': {'class': 'form-control', 'placeholder': 'Rédigez votre message...'}}) }}
+        </div>
+        <div>
+            {{ form_widget(form.submit, {'attr': {'class': 'btn btn-primary'}}) }}
+        </div>
+        {{ form_end(form) }}
+
+        {% if app.session.has("contact_data") %}
+            <div class="alert alert-info mt-4">
+                <h4><i class="bi bi-scroll"></i> Votre message :</h4>
+                <p><strong>Nom du Sorcier :</strong> {{ app.session.get("contact_data").name }}</p>
+                <p><strong>Adresse de Chouette Postale :</strong> {{ app.session.get("contact_data").email }}</p>
+                <p><strong>Message :</strong> {{ app.session.get("contact_data").message }}</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

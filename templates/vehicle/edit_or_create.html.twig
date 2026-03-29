@@ -1,0 +1,83 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ vehicle.id ? 'Modifier' : 'Ajouter' }} un véhicule{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <h1 class="text-primary">{{ vehicle and vehicle.id ? 'Modifier' : 'Ajouter' }} un véhicule</h1>
+
+        {{ form_start(form) }}
+
+        {# Affichage des erreurs globales du formulaire #}
+        {% if form.vars.errors|length > 0 %}
+            <div class="alert alert-danger">
+                <ul class="mb-0">
+                    {% for error in form.vars.errors %}
+                        <li>{{ error.message }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    {{ form_label(form.name) }}
+                    {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+                    <div class="text-danger">{{ form_errors(form.name) }}</div>
+                </div>
+
+                <div class="mb-3">
+                    {{ form_label(form.capacity) }}
+                    {{ form_widget(form.capacity, {'attr': {'class': 'form-control'}}) }}
+                    <div class="text-danger">{{ form_errors(form.capacity) }}</div>
+                </div>
+
+                <div class="mb-3">
+                    {{ form_label(form.price) }}
+                    {{ form_widget(form.price, {'attr': {'class': 'form-control'}}) }}
+                    <div class="text-danger">{{ form_errors(form.price) }}</div>
+                </div>
+
+                <div class="mb-3">
+                    {{ form_label(form.typeVehicle) }}
+                    {{ form_widget(form.typeVehicle, {'attr': {'class': 'form-select'}}) }}
+                    <div class="text-danger">{{ form_errors(form.typeVehicle) }}</div>
+                </div>
+
+                <div class="mb-3">
+                    {{ form_label(form.features) }}
+                    {{ form_widget(form.features, {'attr': {'class': 'form-select', 'multiple': 'multiple'}}) }}
+                    <div class="text-danger">{{ form_errors(form.features) }}</div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Image actuelle :</label>
+                <div class="d-flex align-items-center">
+                    {% if vehicle.id and vehicle.imagePath %}
+                        <img src="{{ asset(vehicle.imagePath) }}" class="img-thumbnail me-3" alt="{{ vehicle.name }}" width="150">
+                    {% else %}
+                        <img src="{{ asset('uploads/default.png') }}" class="img-thumbnail me-3" alt="Aucune image" width="150">
+                    {% endif %}
+                    <div>
+                        {{ form_label(form.imageFile) }}
+                        {{ form_widget(form.imageFile, {'attr': {'class': 'form-control'}}) }}
+                        <div class="text-danger">{{ form_errors(form.imageFile) }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-save"></i> {{ vehicle.id ? 'Mettre à jour' : 'Ajouter' }}
+            </button>
+            <a href="{{ path('app_vehicle') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Retour à la liste
+            </a>
+        </div>
+
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

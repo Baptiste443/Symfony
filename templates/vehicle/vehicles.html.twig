@@ -1,0 +1,87 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Liste des Véhicules Magiques{% endblock %}
+
+{% block body %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="text-primary"><i class="bi bi-moon-stars"></i>{{'vehicles.title'|trans }}</h1>
+        <a class="btn btn-success" href="{{ path('vehicle_edit_or_create') }}">
+            <i class="bi bi-magic"></i> {{'vehicles.add'|trans }}
+        </a>
+    </div>
+    {{ form_start(form) }}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            {{ form_row(form.type, { 'label': 'vehicles.type'|trans }) }}
+        </div>
+        <div class="col-md-3">
+            {{ form_row(form.capacity, {'label': 'vehicles.capacity'|trans }) }}
+        </div>
+        <div class="col-md-3">
+            {{ form_row(form.priceMin, {'label': 'vehicles.priceMin'|trans }) }}
+        </div>
+        <div class="col-md-3">
+            {{ form_row(form.priceMax, {'label': 'vehicles.priceMax'|trans }) }}
+        </div>
+    </div>
+
+    {{ form_label(form.features) }}
+    <div class="border rounded p-3 bg-light">
+        <div class="row g-3">
+            {% for feature in form.features %}
+                <div class="col-md-3">
+                    <div class="form-check">
+                        {{ form_widget(feature, {'attr': {'class': 'form-check-input'}}) }}
+                        {{ form_label(feature, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {{ form_end(form) }}
+    {{ knp_pagination_render(pagination) }}
+    <div class="row">
+        {% for vehicle in pagination.items %}
+            <div class="col-xl-3 col-xxl-3 col-lg-4 col-md-6 mb-4">
+                <div class="card shadow-sm border-primary h-100 d-flex flex-column">
+                    <a href="{{ path('details_vehicle', {id: vehicle.id}) }}">
+                        <img src="{{ asset(vehicle.imagePath) }}" class="card-img-top object-fit-cover" alt="{{ vehicle.name }}" height="300">
+                    </a>
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title text-primary">
+                            <a href="{{ path('details_vehicle', {id: vehicle.id}) }}" class="text-decoration-none text-primary">
+                                <i class="bi bi-broom"></i> {{ vehicle.name }}
+                            </a>
+                        </h5>
+                        <p class="card-text flex-grow-1">
+                            <i class="bi bi-bookmark-star"></i> <strong>{{'vehicles.type'|trans }} :</strong> {{ vehicle.typeVehicle.name }}<br>
+                            <i class="bi bi-people-fill"></i> <strong>{{'vehicles.capacity'|trans }} :</strong> {{ vehicle.capacity }} passagers<br>
+                            <i class="bi bi-gem"></i> <strong>{{'vehicles.price'|trans }} :</strong> {{ vehicle.price }} galions / jour<br>
+                            <i class="bi bi-stars"></i> <strong>{{'vehicles.features'|trans }} :</strong>
+                            {% for f in vehicle.features %}
+                                {{ f.name }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </p>
+                        <div class="d-grid gap-2 mt-auto">
+                            <a class="btn btn-info" href="{{ path('details_vehicle', {id: vehicle.id}) }}">
+                                <i class="bi bi-crystal-ball"></i> {{'vehicles.details'|trans }}
+                            </a>
+                            <a class="btn btn-dark" href="{{ path('reservation_vehicle', {id: vehicle.id}) }}">
+                                <i class="bi bi-calendar3"></i> {{'vehicles.book'|trans }}
+                            </a>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ path('vehicle_edit_or_create', { id: vehicle.id }) }}" class="btn btn-warning btn-sm">
+                                <i class="bi bi-quill"></i> {{'vehicles.edit'|trans }}
+                            </a>
+                            <a href="{{ path('vehicle_confirm_delete', { id: vehicle.id }) }}" class="btn btn-danger btn-sm">
+                                <i class="bi bi-skull"></i> {{'vehicles.delete'|trans }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

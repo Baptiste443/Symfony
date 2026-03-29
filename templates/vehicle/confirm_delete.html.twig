@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Confirmation de suppression{% endblock %}
+
+{% block body %}
+    <div class="container mt-5">
+        <h1 class="text-danger"><i class="bi bi-exclamation-triangle"></i> Confirmation de suppression</h1>
+        <p>Êtes-vous sûr de vouloir supprimer <strong>{{ vehicle.name }}</strong> ? Cette action est irréversible.</p>
+
+        {{ form_start(form) }}
+        <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Confirmer la suppression</button>
+        <a href="{{ path('app_vehicle') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Annuler</a>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
