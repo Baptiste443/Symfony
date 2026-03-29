@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmation de réservation</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #0d6efd;">Magic Vehicles</h1>
+    <h2>Votre réservation est confirmée !</h2>
+
+    <p>Bonjour,</p>
+    <p>Nous confirmons votre réservation pour le véhicule suivant :</p>
+
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <tr style="background: #f8f9fa;">
+            <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Véhicule</strong></td>
+            <td style="padding: 8px; border: 1px solid #dee2e6;">{{ reservation.vehicle.name }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Du</strong></td>
+            <td style="padding: 8px; border: 1px solid #dee2e6;">{{ reservation.startDate|date('d/m/Y') }}</td>
+        </tr>
+        <tr style="background: #f8f9fa;">
+            <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Au</strong></td>
+            <td style="padding: 8px; border: 1px solid #dee2e6;">{{ reservation.endDate|date('d/m/Y') }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Durée</strong></td>
+            <td style="padding: 8px; border: 1px solid #dee2e6;">{{ reservation.nbJours }} jour(s)</td>
+        </tr>
+        <tr style="background: #d1e7dd;">
+            <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Total à payer</strong></td>
+            <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>{{ reservation.totalPrice }} galions</strong></td>
+        </tr>
+    </table>
+
+    <p>Présentez ce mail (ou votre bon de réservation) lors de la récupération du véhicule. Le paiement s'effectue sur place.</p>
+
+    <p>Référence de réservation : <strong>{{ reservation.confirmationToken|slice(0, 8)|upper }}</strong></p>
+
+    <p>L'équipe Magic Vehicles</p>
+</body>
+</html>

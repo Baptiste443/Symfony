@@ -25,6 +25,15 @@
         </div>
     </div>
 
+    <div class="row g-3 mb-3">
+        <div class="col-md-3">
+            {{ form_row(form.dateStart, { attr: { class: 'form-control' } }) }}
+        </div>
+        <div class="col-md-3">
+            {{ form_row(form.dateEnd, { attr: { class: 'form-control' } }) }}
+        </div>
+    </div>
+
     {{ form_label(form.features) }}
     <div class="border rounded p-3 bg-light">
         <div class="row g-3">
@@ -39,6 +48,12 @@
         </div>
     </div>
     {{ form_end(form) }}
+
+    {% if dateStart and dateEnd %}
+        <div class="alert alert-info">
+            Véhicules disponibles du <strong>{{ dateStart|date('d/m/Y') }}</strong> au <strong>{{ dateEnd|date('d/m/Y') }}</strong>
+        </div>
+    {% endif %}
     {{ knp_pagination_render(pagination) }}
     <div class="row">
         {% for vehicle in pagination.items %}
@@ -66,7 +81,7 @@
                             <a class="btn btn-info" href="{{ path('details_vehicle', {id: vehicle.id}) }}">
                                 <i class="bi bi-crystal-ball"></i> {{'vehicles.details'|trans }}
                             </a>
-                            <a class="btn btn-dark" href="{{ path('reservation_vehicle', {id: vehicle.id}) }}">
+                            <a class="btn btn-dark" href="{{ path('reservation_vehicle', {id: vehicle.id, dateStart: dateStart, dateEnd: dateEnd}) }}">
                                 <i class="bi bi-calendar3"></i> {{'vehicles.book'|trans }}
                             </a>
                         </div>

@@ -1,7 +1,82 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Hello VehicleController!{% endblock %}
+{% block title %}Réserver {{ vehicle.name }}{% endblock %}
 
 {% block body %}
-        <h1>{{ vehicle.id}} - {{ vehicle.name }}</h1>
+<div class="container mt-4" style="max-width: 600px;">
+    <h1 class="mb-4">Réserver : {{ vehicle.name }}</h1>
+
+    <div class="card mb-4">
+        <div class="card-body d-flex align-items-center gap-3">
+            <img src="{{ asset(vehicle.imagePath) }}" alt="{{ vehicle.name }}" style="width: 120px; height: 80px; object-fit: cover; border-radius: 6px;">
+            <div>
+                <p class="mb-1"><strong>Type :</strong> {{ vehicle.typeVehicle.name }}</p>
+                <p class="mb-1"><strong>Capacité :</strong> {{ vehicle.capacity }} places</p>
+                <p class="mb-0"><strong>Tarif :</strong> {{ vehicle.price }} galions / jour</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            <strong>Choisir la période de location</strong>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ path('reservation_vehicle', {id: vehicle.id}) }}">
+                <div class="mb-3">
+                    <label for="dateStart" class="form-label">Date de début</label>
+                    <input type="date" id="dateStart" name="dateStart" class="form-control"
+                           value="{{ dateStart ?? '' }}" required
+                           min="{{ 'now'|date('Y-m-d') }}">
+                </div>
+                <div class="mb-3">
+                    <label for="dateEnd" class="form-label">Date de fin</label>
+                    <input type="date" id="dateEnd" name="dateEnd" class="form-control"
+                           value="{{ dateEnd ?? '' }}" required
+                           min="{{ 'now'|date('Y-m-d') }}">
+                </div>
+
+                {# Aperçu du prix si les deux dates sont renseignées (calculé en JS) #}
+                <div id="price-preview" class="alert alert-info d-none">
+                    Estimation : <strong id="total-price"></strong> galions
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-calendar-check"></i> Confirmer la réservation
+                </button>
+            </form>
+
+            <div class="mt-3 text-center">
+                <a href="{{ path('app_vehicle') }}">Retour à la liste</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Calcul dynamique du prix total
+    const start = document.getElementById('dateStart');
+    const end = document.getElementById('dateEnd');
+    const preview = document.getElementById('price-preview');
+    const totalEl = document.getElementById('total-price');
+    const pricePerDay = {{ vehicle.price }};
+
+    function updatePrice() {
+        if (start.value && end.value) {
+            const d1 = new Date(start.value);
+            const d2 = new Date(end.value);
+            const days = Math.round((d2 - d1) / 86400000);
+            if (days > 0) {
+                totalEl.textContent = (pricePerDay * days).toLocaleString() + ' (' + days + ' jour(s))';
+                preview.classList.remove('d-none');
+            } else {
+                preview.classList.add('d-none');
+            }
+        }
+    }
+
+    start.addEventListener('change', updatePrice);
+    end.addEventListener('change', updatePrice);
+    updatePrice();
+</script>
 {% endblock %}

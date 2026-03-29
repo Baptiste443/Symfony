@@ -1,0 +1,90 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Bon de réservation #{{ reservation.id }}{% endblock %}
+
+{% block body %}
+{# Bouton d'impression (masqué à l'impression) #}
+<div class="text-end mb-3 no-print">
+    <button onclick="window.print()" class="btn btn-primary">
+        <i class="bi bi-printer"></i> Imprimer le bon
+    </button>
+    <a href="{{ path('app_vehicle') }}" class="btn btn-secondary ms-2">Retour aux véhicules</a>
+</div>
+
+<div class="container" style="max-width: 700px;" id="bon">
+    <div class="text-center mb-4">
+        <h1 class="text-primary">Magic Vehicles</h1>
+        <h2>BON DE RÉSERVATION</h2>
+        <p class="text-muted">N° {{ reservation.confirmationToken|slice(0, 8)|upper }}</p>
+    </div>
+
+    <hr>
+
+    <div class="row mb-3">
+        <div class="col-6">
+            <h5>Client</h5>
+            <p class="mb-1"><strong>Email :</strong> {{ reservation.user.email }}</p>
+            {% if reservation.user.firstName or reservation.user.lastName %}
+                <p class="mb-1"><strong>Nom :</strong> {{ reservation.user.firstName }} {{ reservation.user.lastName }}</p>
+            {% endif %}
+            {% if reservation.user.phone %}
+                <p class="mb-1"><strong>Tél :</strong> {{ reservation.user.phone }}</p>
+            {% endif %}
+        </div>
+        <div class="col-6 text-end">
+            <h5>Réservation</h5>
+            <p class="mb-1"><strong>Date de création :</strong> {{ reservation.confirmedAt|date('d/m/Y H:i') }}</p>
+        </div>
+    </div>
+
+    <hr>
+
+    <h5>Véhicule réservé</h5>
+    <table class="table table-bordered">
+        <tbody>
+            <tr>
+                <th>Modèle</th>
+                <td>{{ reservation.vehicle.name }}</td>
+            </tr>
+            <tr>
+                <th>Type</th>
+                <td>{{ reservation.vehicle.typeVehicle.name }}</td>
+            </tr>
+            <tr>
+                <th>Capacité</th>
+                <td>{{ reservation.vehicle.capacity }} places</td>
+            </tr>
+            <tr>
+                <th>Date de début</th>
+                <td>{{ reservation.startDate|date('d/m/Y') }}</td>
+            </tr>
+            <tr>
+                <th>Date de fin</th>
+                <td>{{ reservation.endDate|date('d/m/Y') }}</td>
+            </tr>
+            <tr>
+                <th>Durée</th>
+                <td>{{ reservation.nbJours }} jour(s)</td>
+            </tr>
+            <tr class="table-success">
+                <th>Total à payer au comptoir</th>
+                <td><strong>{{ reservation.totalPrice|number_format(2, ',', ' ') }} galions</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <div class="alert alert-warning mt-3">
+        <strong>Important :</strong> Présentez ce bon lors de la récupération du véhicule. Le paiement s'effectue sur place.
+    </div>
+</div>
+
+<style>
+@media print {
+    .no-print { display: none !important; }
+    nav, footer { display: none !important; }
+    body { margin: 0; }
+}
+</style>
+{% endblock %}
