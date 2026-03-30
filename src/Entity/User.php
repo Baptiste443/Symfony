@@ -8,51 +8,70 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
+/**
+ * Entité User — représente un utilisateur de l'application.
+ *
+ * Implémente UserInterface (requis par le système de sécurité Symfony)
+ * et PasswordAuthenticatedUserInterface (requis pour le hachage de mot de passe).
+ * La contrainte UniqueEntity garantit qu'il ne peut pas exister deux comptes
+ * avec la même adresse email en BDD.
+ */
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
-#[UniqueEntity(fields: ['email'], message: 'There is already an account with this email')]
+#[UniqueEntity(fields: ['email'], message: 'Un compte existe déjà avec cette adresse email.')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    /** Identifiant auto-incrémenté, clé primaire */
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
+    /** Adresse email — sert également d'identifiant de connexion (getUserIdentifier) */
     #[ORM\Column(length: 180)]
     private ?string $email = null;
 
     /**
-     * @var list<string> The user roles
+     * Rôles de l'utilisateur, stockés en JSON en BDD.
+     * @var list<string>
      */
     #[ORM\Column]
     private array $roles = [];
 
     /**
-     * @var string The hashed password
+     * Mot de passe haché (jamais stocké en clair).
+     * Le hachage est effectué par UserPasswordHasherInterface avant la persistance.
      */
     #[ORM\Column]
     private ?string $password = null;
 
+    /** Indique si l'utilisateur a confirmé son adresse email */
     #[ORM\Column]
     private bool $isVerified = false;
 
+    /** Prénom du client (optionnel, renseigné depuis la page profil) */
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $firstName = null;
 
+    /** Nom de famille du client (optionnel, renseigné depuis la page profil) */
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $lastName = null;
 
+    /** Adresse postale complète (optionnelle, renseignée depuis la page profil) */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $address = null;
 
+    /** Numéro de téléphone (optionnel, renseigné depuis la page profil) */
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $phone = null;
 
+    /** Retourne l'identifiant numérique de l'utilisateur */
     public function getId(): ?int
     {
         return $this->id;
     }
 
+    /** Retourne l'adresse email de l'utilisateur */
     public function getEmail(): ?string
     {
         return $this->email;
@@ -66,7 +85,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * A visual identifier that represents this user.
+     * Retourne l'identifiant visuel de l'utilisateur utilisé par Symfony Security.
+     * Ici, c'est l'adresse email qui sert d'identifiant de connexion.
      *
      * @see UserInterface
      */
@@ -76,14 +96,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * @see UserInterface
+     * Retourne la liste des rôles de l'utilisateur.
+     * ROLE_USER est toujours ajouté automatiquement, même si le tableau est vide,
+     * pour garantir qu'un utilisateur a toujours au moins un rôle de base.
      *
+     * @see UserInterface
      * @return list<string>
      */
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
+        // Tout utilisateur a au minimum ROLE_USER
         $roles[] = 'ROLE_USER';
 
         return array_unique($roles);
@@ -100,6 +123,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
+     * Retourne le mot de passe haché de l'utilisateur.
+     *
      * @see PasswordAuthenticatedUserInterface
      */
     public function getPassword(): ?string
@@ -115,14 +140,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
+     * Efface les données sensibles temporaires de l'utilisateur après l'authentification.
+     * Utile si l'on stocke temporairement le mot de passe en clair (ex: $plainPassword).
+     * Dans notre cas, rien à effacer car on ne stocke jamais le mot de passe en clair.
+     *
      * @see UserInterface
      */
     public function eraseCredentials(): void
     {
-        // If you store any temporary, sensitive data on the user, clear it here
+        // Si des données sensibles temporaires étaient stockées, les effacer ici
         // $this->plainPassword = null;
     }
 
+    /** Retourne true si l'utilisateur a vérifié son adresse email */
     public function isVerified(): bool
     {
         return $this->isVerified;
@@ -135,6 +165,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    /** Retourne le prénom du client */
     public function getFirstName(): ?string
     {
         return $this->firstName;
@@ -147,6 +178,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    /** Retourne le nom de famille du client */
     public function getLastName(): ?string
     {
         return $this->lastName;
@@ -159,6 +191,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    /** Retourne l'adresse postale du client */
     public function getAddress(): ?string
     {
         return $this->address;
@@ -171,6 +204,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    /** Retourne le numéro de téléphone du client */
     public function getPhone(): ?string
     {
         return $this->phone;
