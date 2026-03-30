@@ -8,6 +8,12 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
+ * Repository de l'entité Reservation.
+ *
+ * Fournit des méthodes de requête personnalisées pour récupérer les
+ * réservations d'un utilisateur, séparées en deux catégories :
+ * réservations passées et réservations à venir.
+ *
  * @extends ServiceEntityRepository<Reservation>
  */
 class ReservationRepository extends ServiceEntityRepository
@@ -17,7 +23,16 @@ class ReservationRepository extends ServiceEntityRepository
         parent::__construct($registry, Reservation::class);
     }
 
-    /** Réservations passées d'un utilisateur (date de fin < aujourd'hui), triées de la plus récente */
+    /**
+     * Retourne les réservations passées d'un utilisateur.
+     *
+     * Une réservation est considérée "passée" si sa date de fin (endDate)
+     * est strictement antérieure à aujourd'hui (minuit).
+     * Résultats triés de la plus récente à la plus ancienne (DESC sur endDate)
+     * pour afficher en priorité les dernières locations effectuées.
+     *
+     * @return Reservation[]
+     */
     public function findPastByUser(User $user): array
     {
         return $this->createQueryBuilder('r')
@@ -30,7 +45,16 @@ class ReservationRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /** Réservations à venir d'un utilisateur (date de fin >= aujourd'hui), triées par date de début */
+    /**
+     * Retourne les réservations à venir d'un utilisateur.
+     *
+     * Une réservation est considérée "à venir" si sa date de fin (endDate)
+     * est supérieure ou égale à aujourd'hui (inclut les locations en cours).
+     * Résultats triés par date de début croissante (ASC sur startDate)
+     * pour afficher la prochaine location en tête de liste.
+     *
+     * @return Reservation[]
+     */
     public function findUpcomingByUser(User $user): array
     {
         return $this->createQueryBuilder('r')

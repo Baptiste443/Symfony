@@ -19,8 +19,24 @@ use Symfony\Component\Mime\Address;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
+/**
+ * Contrôleur du compte client.
+ * Gère le profil utilisateur (données personnelles, changement de mot de passe)
+ * et la gestion des réservations (consultation, modification, annulation).
+ * Gère également le changement de langue (locale) de l'application.
+ */
 class ProfileController extends AbstractController
 {
+    /**
+     * Change la langue de l'application pour la session courante.
+     *
+     * Stocke la locale choisie ('fr' ou 'en') dans la session.
+     * Le LocaleListener (EventListener) lira cette valeur à chaque requête
+     * pour appliquer la bonne langue aux traductions Twig.
+     * Redirige vers la page précédente (referer) ou la page d'accueil.
+     *
+     * Route : GET /change-locale/{locale}
+     */
     #[Route('/change-locale/{locale}', name: 'change_locale')]
     public function changeLocale(string $locale, Request $request): RedirectResponse
     {
@@ -32,6 +48,22 @@ class ProfileController extends AbstractController
         return new RedirectResponse($referer ?: $this->generateUrl('home'));
     }
 
+    /**
+     * Affiche et traite le formulaire de profil du client connecté.
+     *
+     * En GET : affiche la page profil avec :
+     *   - le formulaire ProfileType (données personnelles : prénom, nom, adresse, téléphone)
+     *   - le formulaire ChangePasswordType (changement de mot de passe)
+     *   - les réservations à venir et passées de l'utilisateur
+     *
+     * En POST (soumission du formulaire données personnelles) :
+     *   - met à jour l'entité User en BDD via flush() (les champs sont directement mappés)
+     *   - redirige avec un flash 'success'
+     *
+     * Accès restreint à ROLE_USER via access_control dans security.yaml.
+     *
+     * Route : GET|POST /profile
+     */
     #[Route('/profile', name: 'app_profile', methods: ['GET', 'POST'])]
     public function profile(Request $request, EntityManagerInterface $em, ReservationRepository $reservationRepo): Response
     {
@@ -63,6 +95,22 @@ class ProfileController extends AbstractController
         ]);
     }
 
+    /**
+     * Traite la demande de changement de mot de passe (étape 1 sur 2).
+     *
+     * Reçoit le formulaire ChangePasswordType en POST.
+     * Si valide :
+     *  1. Hache le nouveau mot de passe via UserPasswordHasherInterface.
+     *  2. Stocke le hash ET un code à 6 chiffres dans la session
+     *     (le mot de passe n'est PAS encore enregistré en BDD à ce stade).
+     *  3. Envoie le code par email (template profile/confirmation_email.html.twig).
+     *  4. Redirige vers la page de confirmation (étape 2).
+     *
+     * Ce double mécanisme (code par email) évite qu'un tiers ayant accès à la session
+     * puisse changer le mot de passe sans accès à la boîte mail.
+     *
+     * Route : POST /profile/change-password
+     */
     #[Route('/profile/change-password', name: 'app_profile_change_password', methods: ['POST'])]
     public function changePassword(
         Request $request,
@@ -111,6 +159,22 @@ class ProfileController extends AbstractController
         ]);
     }
 
+    /**
+     * Valide le code de confirmation et applique le nouveau mot de passe (étape 2 sur 2).
+     *
+     * En GET : affiche le formulaire de saisie du code.
+     *
+     * En POST :
+     *  - Compare le code soumis avec celui stocké en session.
+     *  - Si correct : récupère le mot de passe hashé en session, l'applique
+     *    à l'entité User, flush en BDD, nettoie la session.
+     *  - Si incorrect : flash 'danger' et on reste sur la page.
+     *
+     * Note : la comparaison est faite avec == (pas ===) car le code vient
+     * du formulaire HTML en tant que string et est stocké en session en int.
+     *
+     * Route : GET|POST /profile/confirm-password
+     */
     #[Route('/profile/confirm-password', name: 'app_profile_confirm_password', methods: ['GET', 'POST'])]
     public function confirmPassword(Request $request, EntityManagerInterface $em): Response
     {
@@ -141,6 +205,25 @@ class ProfileController extends AbstractController
         return $this->render('profile/confirm_password.html.twig');
     }
 
+    /**
+     * Permet à l'utilisateur de modifier une réservation à venir.
+     *
+     * En GET : affiche le formulaire pré-rempli avec le véhicule et les dates actuels,
+     * ainsi que la liste de tous les véhicules disponibles (dropdown).
+     *
+     * En POST :
+     *  1. Récupère les nouvelles dates et le nouveau véhicule depuis la requête.
+     *  2. Valide la cohérence des dates (fin > début).
+     *  3. Vérifie la disponibilité du véhicule choisi, en excluant la réservation
+     *     courante de la recherche de conflits (pour permettre de garder le même véhicule).
+     *  4. Recalcule le prix total et met à jour la réservation en BDD.
+     *
+     * Protections :
+     *  - Seul le propriétaire de la réservation peut y accéder.
+     *  - Impossible de modifier une réservation dont la date de fin est passée.
+     *
+     * Route : GET|POST /profile/reservation/{id}/edit
+     */
     #[Route('/profile/reservation/{id}/edit', name: 'app_profile_reservation_edit', methods: ['GET', 'POST'])]
     public function editReservation(Reservation $reservation, Request $request, EntityManagerInterface $em): Response
     {
@@ -170,7 +253,7 @@ class ProfileController extends AbstractController
             $dateEnd = $dateEndStr ? new \DateTimeImmutable($dateEndStr) : null;
             $vehicle = $em->getRepository(Vehicle::class)->find($vehicleId);
 
-            // Validations
+            // Validation : tous les champs doivent être renseignés
             if (!$dateStart || !$dateEnd || !$vehicle) {
                 $this->addFlash('danger', 'Veuillez remplir tous les champs.');
                 return $this->render('profile/edit_reservation.html.twig', [
@@ -179,6 +262,7 @@ class ProfileController extends AbstractController
                 ]);
             }
 
+            // Validation : la date de fin doit être après la date de début
             if ($dateEnd <= $dateStart) {
                 $this->addFlash('danger', 'La date de fin doit être postérieure à la date de début.');
                 return $this->render('profile/edit_reservation.html.twig', [
@@ -187,7 +271,8 @@ class ProfileController extends AbstractController
                 ]);
             }
 
-            // Vérifier la disponibilité du véhicule (en excluant la réservation en cours)
+            // Vérification de disponibilité : on exclut la réservation en cours (r.id != currentId)
+            // pour autoriser le client à garder le même véhicule avec de nouvelles dates
             $conflit = $em->getRepository(Reservation::class)->createQueryBuilder('r')
                 ->where('r.vehicle = :vehicle')
                 ->andWhere('r.id != :currentId')
@@ -208,7 +293,7 @@ class ProfileController extends AbstractController
                 ]);
             }
 
-            // Mettre à jour la réservation
+            // Recalcul du prix total et mise à jour de la réservation
             $nbJours = $dateStart->diff($dateEnd)->days;
             $reservation->setVehicle($vehicle);
             $reservation->setStartDate($dateStart);
@@ -226,6 +311,19 @@ class ProfileController extends AbstractController
         ]);
     }
 
+    /**
+     * Annule (supprime) une réservation à venir du client.
+     *
+     * Accepte uniquement les requêtes POST pour éviter les suppressions
+     * accidentelles via un simple lien (GET). Dans la vue, un bouton "Annuler"
+     * soumet un mini-formulaire avec une confirmation JavaScript (confirm()).
+     *
+     * Protections :
+     *  - Seul le propriétaire peut annuler sa réservation.
+     *  - Impossible d'annuler une réservation passée (date de fin dépassée).
+     *
+     * Route : POST /profile/reservation/{id}/cancel
+     */
     #[Route('/profile/reservation/{id}/cancel', name: 'app_profile_reservation_cancel', methods: ['POST'])]
     public function cancelReservation(Reservation $reservation, EntityManagerInterface $em): Response
     {

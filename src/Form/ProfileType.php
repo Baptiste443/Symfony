@@ -9,8 +9,27 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\Length;
 
+/**
+ * Formulaire de mise à jour des données personnelles du client.
+ *
+ * Tous les champs sont optionnels (required => false) car l'utilisateur
+ * peut créer un compte avec seulement son email et compléter son profil plus tard.
+ * Les champs sont directement mappés sur l'entité User (data_class => User::class).
+ */
 class ProfileType extends AbstractType
 {
+    /**
+     * Définit les champs du formulaire.
+     *
+     * Champs :
+     *  - firstName : prénom, 100 caractères max
+     *  - lastName  : nom de famille, 100 caractères max
+     *  - address   : adresse postale complète, 255 caractères max
+     *  - phone     : numéro de téléphone, 20 caractères max
+     *
+     * Tous utilisent TextType (champ texte simple, balise <input type="text">).
+     * Les contraintes Length sont ajoutées en cohérence avec la BDD (VARCHAR).
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -45,6 +64,10 @@ class ProfileType extends AbstractType
         ;
     }
 
+    /**
+     * Configure les options du formulaire.
+     * Lie le formulaire à l'entité User pour le mapping automatique des champs.
+     */
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([

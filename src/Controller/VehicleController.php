@@ -24,14 +24,39 @@ use Symfony\Component\Mime\Address;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Contrôleur principal de l'application.
+ * Gère l'affichage, le filtrage, le CRUD des véhicules
+ * ainsi que le processus complet de réservation.
+ */
 final class VehicleController extends AbstractController
 {
+    /**
+     * Page d'accueil de l'application.
+     * Affiche simplement la vue d'accueil (vehicle/index.html.twig).
+     *
+     * Route : GET /
+     */
     #[Route('/', name: 'home')]
     public function index(): Response
     {
         return $this->render('vehicle/index.html.twig');
     }
 
+    /**
+     * Liste paginée des véhicules avec filtres.
+     *
+     * Construit dynamiquement une requête DQL selon les critères soumis via un
+     * formulaire GET (méthode GET pour permettre la mise en favoris de l'URL) :
+     *   - type de véhicule, capacité min, fourchette de prix, options (features)
+     *   - dateStart / dateEnd : si renseignées, exclut les véhicules qui ont déjà
+     *     une réservation chevauchant cette période (sous-requête DQL avec IDENTITY)
+     *
+     * La pagination est gérée par KnpPaginatorBundle (3 véhicules par page).
+     * Les dates filtrées sont transmises à la vue pour être relayées au bouton "Réserver".
+     *
+     * Route : GET /vehicles
+     */
     #[Route('/vehicles', name: 'app_vehicle')]
     public function vehicles(Request $request, EntityManagerInterface $entityManager, PaginatorInterface $paginator): Response
     {
@@ -102,6 +127,8 @@ final class VehicleController extends AbstractController
                     ->setParameter('type', $data['type']);
             }
             if (!empty($data['features'])) {
+                // Chaque feature cochée génère une clause MEMBER OF distincte
+                // (un seul setParameter par feature pour éviter les collisions)
                 foreach ($data['features'] as $index => $feature) {
                     $queryBuilder
                         ->andWhere(':feature' . $index . ' MEMBER OF v.features')
@@ -121,12 +148,13 @@ final class VehicleController extends AbstractController
                     ->setParameter('priceMax', $data['priceMax']);
             }
 
-            // Filtrage par disponibilité : exclure les véhicules déjà réservés sur la période
+            // Filtrage par disponibilité sur la période choisie.
+            // Algorithme de chevauchement : une réservation bloque si
+            // reservation.startDate < dateEnd ET reservation.endDate > dateStart.
             if ($data['dateStart'] && $data['dateEnd']) {
                 $dateStart = $data['dateStart'];
                 $dateEnd = $data['dateEnd'];
 
-                // Un véhicule est indisponible si une réservation chevauche la période demandée
                 $queryBuilder
                     ->andWhere('v.id NOT IN (
                         SELECT IDENTITY(r.vehicle) FROM App\Entity\Reservation r
@@ -140,7 +168,7 @@ final class VehicleController extends AbstractController
         $pagination = $paginator->paginate(
             $queryBuilder,
             $request->query->getInt('page', 1),
-            3
+            3 // nombre d'éléments par page
         );
 
         return $this->render('vehicle/vehicles.html.twig', [
@@ -152,6 +180,24 @@ final class VehicleController extends AbstractController
         ]);
     }
 
+    /**
+     * Page de réservation d'un véhicule (formulaire + traitement).
+     *
+     * En GET : affiche le formulaire pré-rempli avec les dates transmises depuis
+     * la liste des véhicules (paramètres ?dateStart=...&dateEnd=...).
+     *
+     * En POST :
+     *  1. Valide que les deux dates sont présentes et cohérentes (fin > début).
+     *  2. Vérifie qu'aucune autre réservation ne chevauche la période demandée.
+     *  3. Calcule le prix total (prix/jour × nombre de jours).
+     *  4. Crée la réservation en BDD avec un token unique (bin2hex de 16 octets aléatoires).
+     *  5. Envoie l'email de confirmation via Symfony Mailer.
+     *  6. Redirige vers le bon de réservation.
+     *
+     * Accès réservé aux utilisateurs connectés (ROLE_USER).
+     *
+     * Route : GET|POST /reservation/{id}
+     */
     #[Route('/reservation/{id}', name: 'reservation_vehicle', methods: ['GET', 'POST'])]
     public function reservation(
         Vehicle $vehicle,
@@ -180,7 +226,7 @@ final class VehicleController extends AbstractController
             $dateStart = $dateStartStr ? new \DateTimeImmutable($dateStartStr) : null;
             $dateEnd = $dateEndStr ? new \DateTimeImmutable($dateEndStr) : null;
 
-            // Validations basiques
+            // Validation : les deux dates doivent être présentes
             if (!$dateStart || !$dateEnd) {
                 $this->addFlash('danger', 'Veuillez sélectionner les dates de début et de fin.');
                 return $this->render('vehicle/reservation.html.twig', [
@@ -190,6 +236,7 @@ final class VehicleController extends AbstractController
                 ]);
             }
 
+            // Validation : la date de fin doit être postérieure à la date de début
             if ($dateEnd <= $dateStart) {
                 $this->addFlash('danger', 'La date de fin doit être postérieure à la date de début.');
                 return $this->render('vehicle/reservation.html.twig', [
@@ -199,7 +246,8 @@ final class VehicleController extends AbstractController
                 ]);
             }
 
-            // Vérifier la disponibilité du véhicule sur la période
+            // Vérification de disponibilité : cherche une réservation existante
+            // qui chevauche la période demandée pour ce même véhicule
             $conflit = $em->getRepository(Reservation::class)->createQueryBuilder('r')
                 ->where('r.vehicle = :vehicle')
                 ->andWhere('r.startDate < :dateEnd')
@@ -219,24 +267,25 @@ final class VehicleController extends AbstractController
                 ]);
             }
 
-            // Calculer le prix total
+            // Calcul du prix total : prix journalier × nombre de jours
             $nbJours = $dateStart->diff($dateEnd)->days;
             $totalPrice = (float) $vehicle->getPrice() * $nbJours;
 
-            // Créer la réservation
+            // Création et persistance de la réservation
             $reservation = new Reservation();
             $reservation->setVehicle($vehicle);
             $reservation->setUser($user);
             $reservation->setStartDate($dateStart);
             $reservation->setEndDate($dateEnd);
             $reservation->setTotalPrice((string) $totalPrice);
+            // Token unique de 32 caractères hexadécimaux pour identifier la réservation
             $reservation->setConfirmationToken(bin2hex(random_bytes(16)));
             $reservation->setConfirmedAt(new \DateTimeImmutable());
 
             $em->persist($reservation);
             $em->flush();
 
-            // Envoyer l'email de confirmation
+            // Envoi de l'email de confirmation au client
             $email = (new TemplatedEmail())
                 ->from(new Address('contact@magicvehicles.com', 'Magic Vehicles'))
                 ->to((string) $user->getEmail())
@@ -257,6 +306,15 @@ final class VehicleController extends AbstractController
         ]);
     }
 
+    /**
+     * Affiche le bon de réservation imprimable.
+     *
+     * Page HTML stylisée avec @media print pour masquer navbar/footer à l'impression.
+     * Un bouton "Imprimer" déclenche window.print() côté navigateur.
+     * Seul le propriétaire de la réservation peut y accéder (vérification manuelle).
+     *
+     * Route : GET /reservation/bon/{id}
+     */
     #[Route('/reservation/bon/{id}', name: 'reservation_bon', methods: ['GET'])]
     public function bon(Reservation $reservation): Response
     {
@@ -272,6 +330,15 @@ final class VehicleController extends AbstractController
         ]);
     }
 
+    /**
+     * Affiche la page de détail d'un véhicule.
+     *
+     * Charge le véhicule par son id (ParamConverter automatique de Symfony)
+     * et toutes les features existantes pour afficher un tableau comparatif
+     * (feature disponible ou non sur ce véhicule).
+     *
+     * Route : GET /details/{id}
+     */
     #[Route('/details/{id}', name: 'details_vehicle')]
     public function details(Vehicle $vehicle, EntityManagerInterface $entityManager): Response
     {
@@ -282,6 +349,20 @@ final class VehicleController extends AbstractController
         ]);
     }
 
+    /**
+     * Création ou modification d'un véhicule (formulaire unique).
+     *
+     * Si aucun {id} n'est fourni dans l'URL, on crée un nouveau Vehicle vide.
+     * Sinon, Symfony injecte le Vehicle existant via le ParamConverter.
+     *
+     * Traitements spécifiques à la soumission :
+     *  - Upload d'image : déplacement dans /assets/img/, nom unique via uniqid()
+     *  - Règles métier : un véhicule Utilitaire doit avoir "Caméra de recul",
+     *    un 4x4 doit avoir "GPS" (erreurs ajoutées manuellement au formulaire)
+     *  - isNew : permet d'afficher un message flash différent selon l'opération
+     *
+     * Route : GET|POST /vehicle/edit_or_create/{id?}
+     */
     #[Route('/vehicle/edit_or_create/{id?}', name: 'vehicle_edit_or_create')]
     public function editOrCreate(Request $request, EntityManagerInterface $entityManager, ?Vehicle $vehicle = null): Response
     {
@@ -293,9 +374,11 @@ final class VehicleController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // Permet d'afficher un flash différent pour la création vs la mise à jour
             $isNew = $vehicle->getId() === null;
             $imageFile = $form->get('imageFile')->getData();
 
+            // Si un fichier a été envoyé, on le déplace et on met à jour le chemin
             if ($imageFile instanceof UploadedFile) {
                 $uploadsDir = $this->getParameter('kernel.project_dir') . '/assets/img';
                 $newFilename = uniqid() . '.' . $imageFile->guessExtension();
@@ -303,10 +386,12 @@ final class VehicleController extends AbstractController
                 $vehicle->setImagePath('img/' . $newFilename);
             }
 
+            // Un véhicule sans image ne peut pas être enregistré
             if ($vehicle->getImagePath() == null) {
                 $form->get('imageFile')->addError(new FormError("Veuillez télécharger une image valide (JPG ou PNG)."));
             }
 
+            // Règles métier : certains types de véhicule imposent des features obligatoires
             $typeVehicle = $vehicle->getTypeVehicle();
             if ($typeVehicle) {
                 $featureNames = [];
@@ -323,6 +408,7 @@ final class VehicleController extends AbstractController
                 }
             }
 
+            // On re-vérifie isValid() car des erreurs ont pu être ajoutées manuellement ci-dessus
             if ($form->isValid()) {
                 $entityManager->persist($vehicle);
                 $entityManager->flush();
@@ -341,9 +427,22 @@ final class VehicleController extends AbstractController
         ]);
     }
 
+    /**
+     * Demande de confirmation puis suppression d'un véhicule.
+     *
+     * En GET : affiche une page de confirmation avec un formulaire vide (anti-CSRF).
+     * En POST (formulaire soumis) : supprime le véhicule de la BDD et redirige
+     * vers la liste avec un flash de type 'danger'.
+     *
+     * L'utilisation d'un formulaire POST (plutôt qu'un simple lien GET) protège
+     * contre les suppressions accidentelles ou les attaques CSRF.
+     *
+     * Route : GET|POST /vehicle/confirm-delete/{id}
+     */
     #[Route('/vehicle/confirm-delete/{id}', name: 'vehicle_confirm_delete', methods: ['GET', 'POST'])]
     public function confirmDelete(Request $request, EntityManagerInterface $entityManager, Vehicle $vehicle): Response
     {
+        // Formulaire vide : son seul rôle est de générer un token CSRF valide
         $form = $this->createFormBuilder()
             ->setAction($this->generateUrl('vehicle_confirm_delete', ['id' => $vehicle->getId()]))
             ->setMethod('POST')
