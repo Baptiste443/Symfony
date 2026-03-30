@@ -21,8 +21,7 @@ class RegistrationFormType extends AbstractType
                 'label' => 'Adresse email',
                 'constraints' => [
                     new NotBlank(['message' => 'Veuillez saisir une adresse email.']),
-                    new Email(['message' => 'Adresse email invalide.']),
-                ],
+                    new Email(['message' => 'Adresse email invalide.', 'mode' => 'html5']),                ],
             ])
             ->add('plainPassword', PasswordType::class, [
                 'mapped' => false,

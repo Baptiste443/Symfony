@@ -6,9 +6,10 @@ use App\Entity\Feature;
 use App\Entity\TypeVehicle;
 use App\Entity\Vehicle;
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
-class VehicleFixtures extends Fixture
+class VehicleFixtures extends Fixture implements DependentFixtureInterface
 {
     public function load(ObjectManager $manager): void
     {
@@ -33,18 +34,24 @@ class VehicleFixtures extends Fixture
             $vehicle->setImagePath($data[3]);
             $vehicle->setTypeVehicle($this->getReference($data[4], TypeVehicle::class));
 
-            $numFeatures = ($index * 3 + 7) % 10 + 1; // Assure entre 1 et 5 features par véhicule
+            $numFeatures = ($index * 3 + 7) % 10 + 1;
 
             for ($j = 0; $j < $numFeatures; $j++) {
-                $featureIndex = (($index * 7 + $j * 3) % 20) + 1; // Mélange mieux tout en restant déterministe
+                $featureIndex = (($index * 7 + $j * 3) % 20) + 1;
                 $vehicle->addFeature($this->getReference('feature-' . $featureIndex, Feature::class));
             }
-
 
             $manager->persist($vehicle);
         }
 
         $manager->flush();
+    }
 
+    public function getDependencies(): array
+    {
+        return [
+            TypeVehicleFixtures::class,
+            FeatureFixtures::class,
+        ];
     }
 }
